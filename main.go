@@ -70,7 +70,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	rightSideHeader := strings.ToUpper(m.OS) + " | " +    m.Time.Format(time.Kitchen)
+	rightSideHeader := strings.ToUpper(m.OS) + " | " + m.Time.Format(time.Kitchen)
 
 	if m.DebugMode {
 		var b strings.Builder
