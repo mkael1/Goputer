@@ -1,12 +1,7 @@
 package main
 
-// These imports will be used later on the tutorial. If you save the file
-// now, Go might complain they are unused, but that's fine.
-// You may also need to run `go mod tidy` to download bubbletea and its
-// dependencies.
 import (
 	"fmt"
-	"goputer/internal/card"
 	"goputer/internal/components"
 	"goputer/internal/system"
 	"os"
@@ -26,6 +21,7 @@ type model struct {
 	User   string
 	Memory system.Memory
 	Cpu    system.Cpu
+	Disk   system.Disk
 }
 
 func initialModel() model {
@@ -53,13 +49,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case system.CpuMsg:
 		m.Cpu = system.Cpu(msg)
 		return m, system.CheckCpu()
+
+	case system.DiskMsg:
+		m.Disk = system.Disk(msg)
+		return m, system.CheckDisk()
 	}
 
 	return m, nil
 }
 
 func (m model) View() string {
-	s := fmt.Sprintf("System Monitor Resources - %s", m.User)
 	rightSideHeader := strings.ToUpper(m.OS) + " | " + m.Time.Format(time.Kitchen)
 
 	// Get actual terminal width
@@ -74,6 +73,7 @@ func (m model) View() string {
 		Width(termWidth).
 		MarginBottom(1)
 
+	s := fmt.Sprintf("System Monitor Resources - %s", m.User)
 	// Create the full header with left and right content
 	header := lipgloss.JoinHorizontal(
 		lipgloss.Top,
@@ -83,27 +83,32 @@ func (m model) View() string {
 	)
 
 	header = headerStyle.Render(header)
+	return header + lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		components.RenderCpuCard(m.Cpu, getTermWidth()/2-2),
+		components.RenderMemoryCard(m.Memory, getTermWidth()/2-2),
+	) + lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		components.RenderDiskCard(m.Disk, getTermWidth()/2-2),
+		"",
+	)
 
-	return header + lipgloss.JoinHorizontal(lipgloss.Top, m.getCpuCard(), components.RenderMemoryCard(m.Memory, getTermWidth()/2-2))
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		system.CheckMemory(),
-		system.CheckCpu())
+		system.CheckCpu(),
+		system.CheckDisk(),
+	)
 }
 
 func main() {
 	p := tea.NewProgram(initialModel())
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		fmt.Printf("Ahhh... there's been an error: %v", err)
 		os.Exit(1)
 	}
-}
-
-func (m model) getCpuCard() string {
-	cardWidth := getTermWidth()/2 - 2
-	return card.New("CPU Usage", "").SetWidth(cardWidth).Render()
 }
 
 func getTermWidth() int {
