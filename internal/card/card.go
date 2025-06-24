@@ -42,5 +42,6 @@ var (
 	headerStyle = lipgloss.NewStyle().
 			BorderBottom(true).
 			BorderStyle(lipgloss.NormalBorder()).
-			Foreground(lipgloss.Color("#00ffff"))
+			Foreground(lipgloss.Color("#00ffff")).
+			Bold(true)
 )
