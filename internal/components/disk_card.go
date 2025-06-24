@@ -10,14 +10,21 @@ import (
 )
 
 func RenderDiskCard(disk system.Disk, cardWidth int) string {
+	var content string
+	for _, usageStat := range disk.UsageStats {
+		prog := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C"), progress.WithWidth(20)).ViewAs(usageStat.UsedPercent / 100)
+		diskBlock := lipgloss.JoinVertical(
+			lipgloss.Left,
+			lipgloss.JoinHorizontal(lipgloss.Left, labelStyle.Render(usageStat.Path), prog),
+			labelStyle.Render("Size:")+fmt.Sprintf("%.1f GB / %.1f GB", bytesToGB(usageStat.Free), bytesToGB(usageStat.Total)),
+		)
 
-	overallBar := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C")).ViewAs(disk.UsageStat.UsedPercent / 100)
-	rootBarRow := lipgloss.JoinHorizontal(lipgloss.Left, labelStyle.Render(disk.UsageStat.Path), overallBar)
-	rootDisk := lipgloss.JoinVertical(
-		lipgloss.Left,
-		rootBarRow,
-		fmt.Sprintf("Size: %.1f GB / %.1f GB", bytesToGB(disk.UsageStat.Free), bytesToGB(disk.UsageStat.Total)),
-	)
+		content = lipgloss.JoinVertical(
+			lipgloss.Left,
+			content,
+			diskBlock,
+		)
+	}
 
-	return card.New("Disk Usage", rootDisk).SetWidth(cardWidth).Render()
+	return card.New("Disk Usage", content).SetWidth(cardWidth).Render()
 }

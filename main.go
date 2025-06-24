@@ -16,20 +16,23 @@ import (
 )
 
 type model struct {
-	OS     string
-	Time   time.Time
-	User   string
-	Memory system.Memory
-	Cpu    system.Cpu
-	Disk   system.Disk
+	OS        string
+	Time      time.Time
+	User      string
+	Memory    system.Memory
+	Cpu       system.Cpu
+	Disk      system.Disk
+	Processes []system.ProcessInfo
+	DebugMode bool
 }
 
 func initialModel() model {
 	user, _ := user.Current()
 	return model{
-		OS:   runtime.GOOS,
-		Time: time.Now(),
-		User: user.Username,
+		OS:        runtime.GOOS,
+		Time:      time.Now(),
+		User:      user.Username,
+		DebugMode: false,
 	}
 }
 
@@ -40,6 +43,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
+
+		case "d":
+			m.DebugMode = true
+			return m, nil
 		}
 
 	case system.MemoryMsg:
@@ -53,6 +60,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case system.DiskMsg:
 		m.Disk = system.Disk(msg)
 		return m, system.CheckDisk()
+
+	case system.ProcessMsg:
+		m.Processes = []system.ProcessInfo(msg)
+		return m, system.CheckProcesses()
 	}
 
 	return m, nil
@@ -60,6 +71,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	rightSideHeader := strings.ToUpper(m.OS) + " | " + m.Time.Format(time.Kitchen)
+
+	if m.DebugMode {
+		var b strings.Builder
+
+		return b.String()
+	}
 
 	// Get actual terminal width
 	termWidth, _, _ := term.GetSize(int(os.Stdout.Fd()))
@@ -91,7 +108,7 @@ func (m model) View() string {
 		lipgloss.Top,
 		components.RenderDiskCard(m.Disk, getTermWidth()/2-2),
 		"",
-	)
+	) + components.RenderProcessesCard(m.Processes, getTermWidth()-2)
 
 }
 
@@ -100,6 +117,7 @@ func (m model) Init() tea.Cmd {
 		system.CheckMemory(),
 		system.CheckCpu(),
 		system.CheckDisk(),
+		system.CheckProcesses(),
 	)
 }
 

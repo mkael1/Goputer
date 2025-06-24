@@ -8,18 +8,23 @@ import (
 )
 
 type Disk struct {
-	UsageStat disk.UsageStat
+	UsageStats []disk.UsageStat
 }
 
 func CheckDisk() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
-		disk, err := disk.Usage("/")
-		if err != nil {
-
+		partitions, _ := disk.Partitions(false)
+		var usageStats []disk.UsageStat
+		for _, partition := range partitions {
+			diskStat, err := disk.Usage(partition.Mountpoint)
+			if err != nil {
+				panic(err)
+			}
+			usageStats = append(usageStats, *diskStat)
 		}
 
 		return DiskMsg(Disk{
-			UsageStat: *disk,
+			UsageStats: usageStats,
 		})
 	})
 }
