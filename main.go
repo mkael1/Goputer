@@ -6,16 +6,17 @@ package main
 // dependencies.
 import (
 	"fmt"
+	"goputer/internal/card"
+	"goputer/internal/components"
+	"goputer/internal/system"
 	"os"
 	"os/user"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/shirou/gopsutil/v4/mem"
 	"golang.org/x/term"
 )
 
@@ -23,17 +24,12 @@ type model struct {
 	OS     string
 	Time   time.Time
 	User   string
-	Memory Memory
-}
-
-type Memory struct {
-	Ram  mem.VirtualMemoryStat
-	Swap mem.SwapMemoryStat
+	Memory system.Memory
+	Cpu    system.Cpu
 }
 
 func initialModel() model {
 	user, _ := user.Current()
-	// v, _ := mem.VirtualMemory()
 	return model{
 		OS:   runtime.GOOS,
 		Time: time.Now(),
@@ -50,9 +46,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	case memoryMsg:
-		m.Memory = Memory(msg)
-		return m, checkMemory()
+	case system.MemoryMsg:
+		m.Memory = system.Memory(msg)
+		return m, system.CheckMemory()
+
+	case system.CpuMsg:
+		m.Cpu = system.Cpu(msg)
+		return m, system.CheckCpu()
 	}
 
 	return m, nil
@@ -84,31 +84,14 @@ func (m model) View() string {
 
 	header = headerStyle.Render(header)
 
-	return header + m.getRamCard()
+	return header + lipgloss.JoinHorizontal(lipgloss.Top, m.getCpuCard(), components.RenderMemoryCard(m.Memory, getTermWidth()/2-2))
 }
 
 func (m model) Init() tea.Cmd {
-	return checkMemory()
+	return tea.Batch(
+		system.CheckMemory(),
+		system.CheckCpu())
 }
-
-func checkMemory() tea.Cmd {
-	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
-		ram, err := mem.VirtualMemory()
-		swap, err := mem.SwapMemory()
-		if err != nil {
-			return err
-		}
-
-		m := Memory{
-			Ram:  *ram,
-			Swap: *swap,
-		}
-
-		return memoryMsg(m)
-	})
-}
-
-type memoryMsg Memory
 
 func main() {
 	p := tea.NewProgram(initialModel())
@@ -118,35 +101,12 @@ func main() {
 	}
 }
 
-var (
-	cardStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("63")).
-			MarginTop(1)
+func (m model) getCpuCard() string {
+	cardWidth := getTermWidth()/2 - 2
+	return card.New("CPU Usage", "").SetWidth(cardWidth).Render()
+}
 
-	greenStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#00ff00"))
-)
-
-func (m model) getRamCard() string {
-	totalRamGb := m.Memory.Ram.Total >> 30
-	usedRamGb := m.Memory.Ram.Used >> 30
-	freeRamGb := m.Memory.Ram.Free >> 30
-	cachedRamGb := m.Memory.Ram.Cached >> 30
-
-	swapUsedGb := m.Memory.Swap.Used >> 30
-	swapTotalGb := m.Memory.Swap.Used >> 30
-	swapUsed := fmt.Sprintf("%v GB / %v GB", swapUsedGb, swapTotalGb)
-
-	prog := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C"))
-	return cardStyle.Render(fmt.Sprintf(
-		"RAM: %s\nTotal: %s\nUsed: %s\nFree: %s\nCached: %s\n\nSwap: %s\nSwap Used: %s",
-		prog.ViewAs(m.Memory.Ram.UsedPercent/100),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Render(fmt.Sprintf("%dGB", totalRamGb)),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Render(fmt.Sprintf("%dGB", usedRamGb)),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Render(fmt.Sprintf("%dGB", freeRamGb)),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Render(fmt.Sprintf("%dGB", cachedRamGb)),
-		prog.ViewAs(m.Memory.Swap.UsedPercent/100),
-		lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff00")).Render(swapUsed),
-	))
+func getTermWidth() int {
+	termWidth, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	return termWidth
 }
