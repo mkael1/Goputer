@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"goputer/internal/components"
-	"goputer/internal/system"
 	"os"
 	"os/user"
 	"runtime"
@@ -19,7 +18,6 @@ type model struct {
 	OS            string
 	Time          time.Time
 	User          string
-	Cpu           system.Cpu
 	panels        []tea.Model
 	selectedPanel tea.Model
 	debugMode     bool
@@ -39,9 +37,10 @@ func initialModel() model {
 		height:    height,
 		panels: append(
 			panels,
-			components.MakeMemoryModel(width, height),
-			components.MakeDiskModel(width, height),
-			components.MakeProcessesModel(width, height),
+			components.MakeCpuModel(width/2, height),
+			components.MakeMemoryModel(width/2, height),
+			components.MakeDiskModel(width/2, height),
+			components.MakeProcessesModel(width/2, height),
 		),
 	}
 }
@@ -58,18 +57,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.debugMode = !m.debugMode
 			return m, nil
 		case "right":
-			m.selectedPanel = m.panels[1]
+			m.selectedPanel = m.panels[2]
 		case "del":
 			m.selectedPanel = nil
 		}
 
-	case system.CpuMsg:
-		m.Cpu = system.Cpu(msg)
-		return m, system.CheckCpu()
-
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		for _, pane := range m.panels {
+			pane.Update(msg)
+		}
 	}
 
 	for i, panel := range m.panels {
@@ -118,19 +116,39 @@ func (m model) View() string {
 	)
 
 	header = headerStyle.Render(header)
-	return header + lipgloss.JoinVertical(
-		lipgloss.Top,
-		m.panels[0].View(),
-		m.panels[1].View(),
-		m.panels[2].View(),
-	)
+
+	// Create 2x2 grid
+	var panelsView string
+	if len(m.panels) >= 4 {
+		// First row: panels 0 and 1
+		topRow := lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			m.panels[0].View(),
+			m.panels[1].View(),
+		)
+
+		// Second row: panels 2 and 3
+		bottomRow := lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			m.panels[2].View(),
+			m.panels[3].View(),
+		)
+
+		// Join rows vertically
+		panelsView = lipgloss.JoinVertical(
+			lipgloss.Left,
+			topRow,
+			bottomRow,
+		)
+	}
+
+	return header + "\n" + panelsView
 }
 
 func (m model) Init() tea.Cmd {
 	var batch []tea.Cmd
 	batch = append(
 		batch,
-		system.CheckCpu(),
 	)
 
 	for _, panel := range m.panels {

@@ -31,6 +31,10 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case MemoryMsg:
 		m.memory = Memory(msg)
 		return m, checkMemory()
+	case tea.WindowSizeMsg:
+		m.width = msg.Width / 2
+		m.height = msg.Height
+		return m, nil
 	}
 	var cmd tea.Cmd
 	return m, cmd

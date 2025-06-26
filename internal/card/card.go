@@ -2,42 +2,38 @@ package card
 
 import "github.com/charmbracelet/lipgloss"
 
-func New(header string, content string) card {
-	return card{
+type Card struct {
+	header    string
+	content   string
+	CardStyle lipgloss.Style
+}
+
+func New(header string, content string) Card {
+	return Card{
 		header:    header,
 		content:   content,
-		cardStyle: cardStyle,
+		CardStyle: cardStyle,
 	}
 }
 
-func (c card) SetWidth(i int) card {
-	c.cardStyle = c.cardStyle.Width(i)
+func (c Card) SetWidth(i int) Card {
+	c.CardStyle = c.CardStyle.Width(i)
 	return c
 }
 
-func (c card) Render() string {
-	// First, render the content to determine the card's inner width
-	tempCard := c.cardStyle.Render(c.header + "\n" + c.content)
-	cardWidth := lipgloss.Width(tempCard) - cardStyle.GetHorizontalPadding() - cardStyle.GetHorizontalBorderSize()
-
-	// Now render the header with the calculated width
-	header := headerStyle.Width(cardWidth).Render(c.header)
+func (c Card) Render() string {
+	w := c.CardStyle.GetWidth() - c.CardStyle.GetHorizontalBorderSize() - c.CardStyle.GetHorizontalPadding()
+	header := headerStyle.Width(w).Render(c.header)
 
 	return cardStyle.Render(header + "\n" + c.content)
-}
-
-type card struct {
-	header    string
-	content   string
-	cardStyle lipgloss.Style
 }
 
 var (
 	cardStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("63")).
-			MarginTop(1).
-			Padding(1)
+			Padding(1).
+			MarginTop(1)
 	headerStyle = lipgloss.NewStyle().
 			BorderBottom(true).
 			BorderStyle(lipgloss.NormalBorder()).
