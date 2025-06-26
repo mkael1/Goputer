@@ -16,120 +16,145 @@ import (
 )
 
 type model struct {
-	OS        string
-	Time      time.Time
-	User      string
-	Memory    system.Memory
-	Cpu       system.Cpu
-	Disk      system.Disk
-	Processes []system.ProcessInfo
-	DebugMode bool
+	OS            string
+	Time          time.Time
+	User          string
+	Cpu           system.Cpu
+	panels        []tea.Model
+	selectedPanel tea.Model
+	debugMode     bool
+	width, height int
 }
 
 func initialModel() model {
 	user, _ := user.Current()
+	width, height, _ := term.GetSize(int(os.Stdout.Fd()))
+	var panels []tea.Model
 	return model{
 		OS:        runtime.GOOS,
 		Time:      time.Now(),
 		User:      user.Username,
-		DebugMode: false,
+		debugMode: false,
+		width:     width,
+		height:    height,
+		panels: append(
+			panels,
+			components.MakeMemoryModel(width, height),
+			components.MakeDiskModel(width, height),
+			components.MakeProcessesModel(width, height),
+		),
 	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		// These keys should exit the program.
 		case "ctrl+c", "q":
 			return m, tea.Quit
-
 		case "d":
-			m.DebugMode = true
+			m.debugMode = !m.debugMode
 			return m, nil
+		case "right":
+			m.selectedPanel = m.panels[1]
+		case "del":
+			m.selectedPanel = nil
 		}
-
-	case system.MemoryMsg:
-		m.Memory = system.Memory(msg)
-		return m, system.CheckMemory()
 
 	case system.CpuMsg:
 		m.Cpu = system.Cpu(msg)
 		return m, system.CheckCpu()
 
-	case system.DiskMsg:
-		m.Disk = system.Disk(msg)
-		return m, system.CheckDisk()
-
-	case system.ProcessMsg:
-		m.Processes = []system.ProcessInfo(msg)
-		return m, system.CheckProcesses()
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
-	return m, nil
+	for i, panel := range m.panels {
+		var cmd tea.Cmd
+
+		if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
+			// Not a key message, send to all panels
+			m.panels[i], cmd = panel.Update(msg)
+		} else if panel == m.selectedPanel {
+			// Is a key message, only send to selected panel
+			m.panels[i], cmd = panel.Update(msg)
+		}
+
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
 	rightSideHeader := strings.ToUpper(m.OS) + " | " + m.Time.Format(time.Kitchen)
 
-	if m.DebugMode {
+	if m.debugMode {
 		var b strings.Builder
 
 		return b.String()
 	}
 
-	// Get actual terminal width
-	termWidth, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	if termWidth == 0 {
-		termWidth = 80 // fallback width
-	}
 	var headerStyle = lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("#ffffff")).
 		BorderBottom(true).
-		Width(termWidth).
+		Width(m.width).
 		MarginBottom(1)
 
 	s := fmt.Sprintf("System Monitor Resources - %s", m.User)
+
 	// Create the full header with left and right content
 	header := lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		s,
-		strings.Repeat(" ", termWidth-lipgloss.Width(s)-lipgloss.Width(rightSideHeader)),
+		strings.Repeat(" ", m.width-lipgloss.Width(s)-lipgloss.Width(rightSideHeader)),
 		rightSideHeader,
 	)
 
 	header = headerStyle.Render(header)
-	return header + lipgloss.JoinHorizontal(
+	return header + lipgloss.JoinVertical(
 		lipgloss.Top,
-		components.RenderCpuCard(m.Cpu, getTermWidth()/2-2),
-		components.RenderMemoryCard(m.Memory, getTermWidth()/2-2),
-	) + lipgloss.JoinHorizontal(
-		lipgloss.Top,
-		components.RenderDiskCard(m.Disk, getTermWidth()/2-2),
-		"",
-	) + components.RenderProcessesCard(m.Processes, getTermWidth()-2)
-
+		m.panels[0].View(),
+		m.panels[1].View(),
+		m.panels[2].View(),
+	)
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(
-		system.CheckMemory(),
+	var batch []tea.Cmd
+	batch = append(
+		batch,
 		system.CheckCpu(),
-		system.CheckDisk(),
-		system.CheckProcesses(),
+	)
+
+	for _, panel := range m.panels {
+		batch = append(batch, panel.Init())
+	}
+
+	return tea.Batch(
+		batch...,
 	)
 }
 
 func main() {
-	p := tea.NewProgram(initialModel())
+	if len(os.Getenv("DEBUG")) > 0 {
+		f, err := tea.LogToFile("debug.log", "debug")
+		if err != nil {
+			fmt.Println("fatal:", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+	}
+
+	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Ahhh... there's been an error: %v", err)
 		os.Exit(1)
 	}
-}
-
-func getTermWidth() int {
-	termWidth, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	return termWidth
 }

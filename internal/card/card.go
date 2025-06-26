@@ -38,7 +38,6 @@ var (
 			BorderForeground(lipgloss.Color("63")).
 			MarginTop(1).
 			Padding(1)
-
 	headerStyle = lipgloss.NewStyle().
 			BorderBottom(true).
 			BorderStyle(lipgloss.NormalBorder()).

@@ -2,56 +2,129 @@ package components
 
 import (
 	"goputer/internal/card"
-	"goputer/internal/system"
+	"sort"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
-func RenderProcessesCard(processes []system.ProcessInfo, cardWidth int) string {
+type ProcessesModel struct {
+	table  table.Model
+	width  int
+	height int
+}
+
+func MakeProcessesModel(width, height int) *ProcessesModel {
 	columns := []table.Column{
 		{Title: "PID", Width: 4},
 		{Title: "User", Width: 10},
 		{Title: "Process", Width: 10},
 		{Title: "CPU%", Width: 10},
 		{Title: "MEM%", Width: 10},
-		{Title: "Command", Width: cardWidth - 10 - 10 - 10 - 10 - 4 - 14}, // TODO: calculate the width better...
-	}
-
-	rows := []table.Row{}
-
-	for _, process := range processes {
-		r := table.Row{
-			strconv.Itoa(int(process.PID)),
-			process.Username,
-			process.Name,
-			strconv.FormatFloat(process.CPUPercent/10, 'f', -1, 32),
-			strconv.FormatFloat(float64(process.MemPercent), 'f', -1, 32),
-			process.Command,
-		}
-		rows = append(rows, r)
+		{Title: "Command", Width: width - 10 - 10 - 10 - 10 - 4 - 14}, // TODO: calculate the width better...
 	}
 
 	t := table.New(
 		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(false),
+		table.WithFocused(true),
 		table.WithHeight(7),
 	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-		// Width(20)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
-	return card.New("Top Processes", t.View()).SetWidth(cardWidth).Render()
+	model := ProcessesModel{
+		table:  t,
+		width:  width,
+		height: height,
+	}
+	return &model
 }
+
+func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case ProcessMsg:
+		var rows []table.Row
+		for _, val := range []processInfo(msg) {
+			rows = append(rows, table.Row{
+				strconv.Itoa(int(val.PID)),
+				val.Username,
+				val.Name,
+				strconv.FormatFloat(val.CPUPercent/10, 'f', -1, 32),
+				strconv.FormatFloat(float64(val.MemPercent), 'f', -1, 32),
+				val.Command,
+			})
+		}
+		m.table.SetRows(rows)
+		return m, checkProcesses()
+	}
+	var cmd tea.Cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+func (m *ProcessesModel) View() string {
+	return card.New("Processes", m.table.View()).SetWidth(m.width).Render()
+}
+
+func (m *ProcessesModel) Init() tea.Cmd {
+	return tea.Batch(
+		checkProcesses(),
+	)
+}
+
+type processInfo struct {
+	PID        int32
+	Name       string
+	Username   string
+	CPUPercent float64
+	MemPercent float32
+	Command    string
+}
+
+func checkProcesses() tea.Cmd {
+	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+		processes, _ := getTopProcesses()
+
+		return ProcessMsg(processes)
+	})
+}
+
+func getTopProcesses() ([]processInfo, error) {
+	var processes []processInfo
+
+	// Get all processes
+	pids, err := process.Pids()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pid := range pids {
+		p, err := process.NewProcess(pid)
+		if err != nil {
+			continue // Process might have died
+		}
+
+		name, _ := p.Name()
+		username, _ := p.Username()
+		cpuPercent, _ := p.CPUPercent()
+		memPercent, _ := p.MemoryPercent()
+		cmdline, _ := p.Cmdline()
+
+		processes = append(processes, processInfo{
+			PID:        pid,
+			Name:       name,
+			Username:   username,
+			CPUPercent: cpuPercent,
+			MemPercent: memPercent,
+			Command:    cmdline,
+		})
+	}
+
+	sort.Slice(processes, func(i, j int) bool {
+		return processes[i].CPUPercent > processes[j].CPUPercent
+	})
+
+	return processes, nil
+}
+
+type ProcessMsg []processInfo

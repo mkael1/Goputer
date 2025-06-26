@@ -4,24 +4,50 @@ import (
 	"fmt"
 	"goputer/internal/card"
 	"goputer/internal/styles"
-	"goputer/internal/system"
+	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
-func RenderMemoryCard(memory system.Memory, cardWidth int) string {
-	totalRamGb := bytesToGB(memory.Ram.Total)
-	usedRamGb := bytesToGB(memory.Ram.Used)
-	freeRamGb := bytesToGB(memory.Ram.Free)
-	cachedRamGb := bytesToGB(memory.Ram.Cached)
+type MemoryModel struct {
+	memory Memory
+	width  int
+	height int
+}
 
-	swapUsedGb := bytesToGB(memory.Swap.Used)
-	swapTotalGb := bytesToGB(memory.Swap.Total)
+func MakeMemoryModel(width, height int) *MemoryModel {
+	model := MemoryModel{
+		width:  width,
+		height: height,
+	}
+	return &model
+}
+
+func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case MemoryMsg:
+		m.memory = Memory(msg)
+		return m, checkMemory()
+	}
+	var cmd tea.Cmd
+	return m, cmd
+}
+
+func (m *MemoryModel) View() string {
+	totalRamGb := bytesToGB(m.memory.ram.Total)
+	usedRamGb := bytesToGB(m.memory.ram.Used)
+	freeRamGb := bytesToGB(m.memory.ram.Free)
+	cachedRamGb := bytesToGB(m.memory.ram.Cached)
+
+	swapUsedGb := bytesToGB(m.memory.swap.Used)
+	swapTotalGb := bytesToGB(m.memory.swap.Total)
 	swapUsed := fmt.Sprintf("%.1f GB / %.1f GB", swapUsedGb, swapTotalGb)
 
-	labelWidth := 12                         // adjust as needed
-	valueWidth := cardWidth - labelWidth - 4 // account for padding
+	labelWidth := 12                       // adjust as needed
+	valueWidth := m.width - labelWidth - 4 // account for padding
 
 	prog := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C"))
 
@@ -30,7 +56,7 @@ func RenderMemoryCard(memory system.Memory, cardWidth int) string {
 
 	ramRow := lipgloss.JoinHorizontal(lipgloss.Top,
 		labelStyle.Render("RAM:"),
-		prog.ViewAs(memory.Ram.UsedPercent/100))
+		prog.ViewAs(m.memory.ram.UsedPercent/100))
 	totalRow := lipgloss.JoinHorizontal(lipgloss.Top,
 		labelStyle.Render("Total:"),
 		valueStyle.Render(fmt.Sprintf("%.1fGB", totalRamGb)))
@@ -45,15 +71,49 @@ func RenderMemoryCard(memory system.Memory, cardWidth int) string {
 		valueStyle.Render(fmt.Sprintf("%.1fGB\n", cachedRamGb)))
 	swapRow := lipgloss.JoinHorizontal(lipgloss.Top,
 		labelStyle.Render("Swap:"),
-		prog.ViewAs(memory.Swap.UsedPercent/100))
+		prog.ViewAs(m.memory.swap.UsedPercent/100))
 	swapUsageRow := lipgloss.JoinHorizontal(lipgloss.Top,
 		labelStyle.Render("Swap Used:"),
 		valueStyle.Render(swapUsed))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, ramRow, totalRow, usedRow, freeRow, cachedRow, swapRow, swapUsageRow)
-	return card.New("Memory Usage", content).SetWidth(cardWidth).Render()
+	return card.New("Memory Usage", content).SetWidth(m.width).Render()
+}
+
+func (m *MemoryModel) Init() tea.Cmd {
+	return tea.Batch(
+		checkMemory(),
+	)
 }
 
 func bytesToGB(bytes uint64) float64 {
 	return float64(bytes) / (1024 * 1024 * 1024)
 }
+
+type Memory struct {
+	ram  mem.VirtualMemoryStat
+	swap mem.SwapMemoryStat
+}
+
+func checkMemory() tea.Cmd {
+	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+		ram, err := mem.VirtualMemory()
+		if err != nil {
+			return err
+		}
+
+		swap, err := mem.SwapMemory()
+		if err != nil {
+			return err
+		}
+
+		m := Memory{
+			ram:  *ram,
+			swap: *swap,
+		}
+
+		return MemoryMsg(m)
+	})
+}
+
+type MemoryMsg Memory
