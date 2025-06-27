@@ -2,6 +2,7 @@ package components
 
 import (
 	"goputer/internal/card"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -15,16 +16,22 @@ type ProcessesModel struct {
 	table  table.Model
 	width  int
 	height int
+	card   card.Card
 }
 
 func MakeProcessesModel(width, height int) *ProcessesModel {
+	card := card.New("Processes", "")
+	totalWidth := width - card.CardStyle.GetHorizontalBorderSize() - card.CardStyle.GetHorizontalPadding()
+	log.Println(totalWidth)
+	widthPerColumn := totalWidth / 6
+
 	columns := []table.Column{
-		{Title: "PID", Width: 4},
-		{Title: "User", Width: 10},
-		{Title: "Process", Width: 10},
-		{Title: "CPU%", Width: 10},
-		{Title: "MEM%", Width: 10},
-		{Title: "Command", Width: width - 10 - 10 - 10 - 10 - 4 - 14}, // TODO: calculate the width better...
+		{Title: "PID", Width: widthPerColumn},
+		{Title: "User", Width: widthPerColumn},
+		{Title: "Process", Width: widthPerColumn},
+		{Title: "CPU%", Width: widthPerColumn},
+		{Title: "MEM%", Width: widthPerColumn},
+		{Title: "Command", Width: widthPerColumn}, // TODO: calculate the width better...
 	}
 
 	t := table.New(
@@ -36,12 +43,17 @@ func MakeProcessesModel(width, height int) *ProcessesModel {
 		table:  t,
 		width:  width,
 		height: height,
+		card:   card,
 	}
 	return &model
 }
 
 func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width / 2
+		m.height = msg.Height
+		return m, nil
 	case ProcessMsg:
 		var rows []table.Row
 		for _, val := range []processInfo(msg) {
@@ -63,7 +75,8 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProcessesModel) View() string {
-	return card.New("Processes", m.table.View()).SetWidth(m.width).Render()
+	log.Println(m.width)
+	return m.card.SetWidth(m.width).SetContent(m.table.View()).Render()
 }
 
 func (m *ProcessesModel) Init() tea.Cmd {

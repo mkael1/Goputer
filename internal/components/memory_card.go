@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"goputer/internal/card"
 	"goputer/internal/styles"
+	"log"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -31,6 +32,10 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case MemoryMsg:
 		m.memory = Memory(msg)
 		return m, checkMemory()
+	case tea.WindowSizeMsg:
+		m.width = msg.Width / 2
+		m.height = msg.Height
+		return m, nil
 	}
 	var cmd tea.Cmd
 	return m, cmd
@@ -77,6 +82,7 @@ func (m *MemoryModel) View() string {
 		valueStyle.Render(swapUsed))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, ramRow, totalRow, usedRow, freeRow, cachedRow, swapRow, swapUsageRow)
+	log.Println(m.width)
 	return card.New("Memory Usage", content).SetWidth(m.width).Render()
 }
 

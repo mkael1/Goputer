@@ -30,6 +30,10 @@ func (m *DiskModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case DiskMsg:
 		m.disks = []disk.UsageStat(msg)
 		return m, checkDisk()
+	case tea.WindowSizeMsg:
+		m.width = msg.Width / 2
+		m.height = msg.Height
+		return m, nil
 	}
 	var cmd tea.Cmd
 	return m, cmd
