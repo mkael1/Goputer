@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"goputer/internal/card"
+	"log"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -71,7 +72,7 @@ func (m *CPUModel) View() string {
 	}
 
 	content = lipgloss.JoinVertical(lipgloss.Left, content, "", getUptimeString(m.cpu.Uptime))
-
+	log.Println(m.width)
 	return card.New("CPU Usage", content).SetWidth(m.width).Render()
 }
 

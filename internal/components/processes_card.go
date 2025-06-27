@@ -2,6 +2,7 @@ package components
 
 import (
 	"goputer/internal/card"
+	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -20,7 +21,10 @@ type ProcessesModel struct {
 
 func MakeProcessesModel(width, height int) *ProcessesModel {
 	card := card.New("Processes", "")
-	widthPerColumn := width - card.CardStyle.GetHorizontalBorderSize() - card.CardStyle.GetHorizontalPadding()
+	totalWidth := width - card.CardStyle.GetHorizontalBorderSize() - card.CardStyle.GetHorizontalPadding()
+	log.Println(totalWidth)
+	widthPerColumn := totalWidth / 6
+
 	columns := []table.Column{
 		{Title: "PID", Width: widthPerColumn},
 		{Title: "User", Width: widthPerColumn},
@@ -39,6 +43,7 @@ func MakeProcessesModel(width, height int) *ProcessesModel {
 		table:  t,
 		width:  width,
 		height: height,
+		card:   card,
 	}
 	return &model
 }
@@ -70,7 +75,8 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProcessesModel) View() string {
-	return m.card.SetWidth(m.width).Render()
+	log.Println(m.width)
+	return m.card.SetWidth(m.width).SetContent(m.table.View()).Render()
 }
 
 func (m *ProcessesModel) Init() tea.Cmd {

@@ -21,6 +21,11 @@ func (c Card) SetWidth(i int) Card {
 	return c
 }
 
+func (c Card) SetContent(content string) Card {
+	c.content = content
+	return c
+}
+
 func (c Card) Render() string {
 	w := c.CardStyle.GetWidth() - c.CardStyle.GetHorizontalBorderSize() - c.CardStyle.GetHorizontalPadding()
 	header := headerStyle.Width(w).Render(c.header)
