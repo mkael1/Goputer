@@ -15,13 +15,13 @@ import (
 )
 
 type model struct {
-	OS            string
-	Time          time.Time
-	User          string
-	panels        []tea.Model
-	selectedPanel tea.Model
-	debugMode     bool
-	width, height int
+	OS                 string
+	Time               time.Time
+	User               string
+	panels             []tea.Model
+	selectedPanelIndex int
+	debugMode          bool
+	width, height      int
 }
 
 func initialModel() model {
@@ -57,9 +57,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.debugMode = !m.debugMode
 			return m, nil
 		case "right":
-			m.selectedPanel = m.panels[2]
+			if len(m.panels) == m.selectedPanelIndex+1 {
+				m.selectedPanelIndex = 0
+			} else {
+				m.selectedPanelIndex += 1
+			}
+		case "left":
+			if m.selectedPanelIndex == 0 {
+				m.selectedPanelIndex = len(m.panels) - 1
+			} else {
+				m.selectedPanelIndex -= 1
+			}
 		case "del":
-			m.selectedPanel = nil
+			m.selectedPanelIndex = 0
 		}
 
 	case tea.WindowSizeMsg:
@@ -76,14 +86,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
 			// Not a key message, send to all panels
 			m.panels[i], cmd = panel.Update(msg)
-		} else if panel == m.selectedPanel {
-			// Is a key message, only send to selected panel
-			m.panels[i], cmd = panel.Update(msg)
 		}
 
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+	}
+
+	if _, isKeyMsg := msg.(tea.KeyMsg); isKeyMsg {
+		// Not a key message, send to all panels
+		_, cmd := m.panels[m.selectedPanelIndex].Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
