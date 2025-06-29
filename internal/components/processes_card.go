@@ -2,7 +2,6 @@ package components
 
 import (
 	"goputer/internal/card"
-	"log"
 	"sort"
 	"strconv"
 	"time"
@@ -22,29 +21,21 @@ type ProcessesModel struct {
 func MakeProcessesModel(width, height int) *ProcessesModel {
 	card := card.New("Processes", "")
 	totalWidth := width - card.CardStyle.GetHorizontalBorderSize() - card.CardStyle.GetHorizontalPadding()
-	log.Println(totalWidth)
-	widthPerColumn := totalWidth / 6
-
-	columns := []table.Column{
-		{Title: "PID", Width: widthPerColumn},
-		{Title: "User", Width: widthPerColumn},
-		{Title: "Process", Width: widthPerColumn},
-		{Title: "CPU%", Width: widthPerColumn},
-		{Title: "MEM%", Width: widthPerColumn},
-		{Title: "Command", Width: widthPerColumn}, // TODO: calculate the width better...
-	}
 
 	t := table.New(
-		table.WithColumns(columns),
+		table.WithColumns(getTableColumns(totalWidth)),
 		table.WithFocused(true),
-		table.WithHeight(7),
+		table.WithWidth(totalWidth),
+		table.WithHeight(9),
 	)
+
 	model := ProcessesModel{
 		table:  t,
 		width:  width,
 		height: height,
 		card:   card,
 	}
+
 	return &model
 }
 
@@ -53,6 +44,10 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width / 2
 		m.height = msg.Height
+		targetWidth := m.width - m.card.CardStyle.GetHorizontalPadding() - m.card.CardStyle.GetHorizontalBorderSize()
+		m.card = m.card.SetWidth(m.width)
+		m.table.SetWidth(targetWidth)
+		m.table.SetColumns(getTableColumns(targetWidth))
 		return m, nil
 	case ProcessMsg:
 		var rows []table.Row
@@ -75,14 +70,32 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProcessesModel) View() string {
-	log.Println(m.width)
-	return m.card.SetWidth(m.width).SetContent(m.table.View()).Render()
+	card := m.card.SetContent(m.table.View())
+	return card.Render()
 }
 
 func (m *ProcessesModel) Init() tea.Cmd {
 	return tea.Batch(
 		checkProcesses(),
 	)
+}
+
+func (m *ProcessesModel) ToggleActive() {
+	m.card = m.card.ToggleActive()
+}
+
+func getTableColumns(width int) []table.Column {
+	autoWidth := (width / 6) - table.DefaultStyles().Cell.GetHorizontalPadding()
+	columns := []table.Column{
+		{Title: "PID", Width: autoWidth / 2},
+		{Title: "User", Width: autoWidth / 2},
+		{Title: "Process", Width: autoWidth},
+		{Title: "CPU%", Width: autoWidth},
+		{Title: "MEM%", Width: autoWidth},
+		{Title: "Command", Width: autoWidth * 2},
+	}
+
+	return columns
 }
 
 type processInfo struct {

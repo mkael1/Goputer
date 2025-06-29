@@ -14,20 +14,34 @@ import (
 	"golang.org/x/term"
 )
 
+type Panel interface {
+	tea.Model
+	ToggleActive()
+}
+
 type model struct {
-	OS            string
-	Time          time.Time
-	User          string
-	panels        []tea.Model
-	selectedPanel tea.Model
-	debugMode     bool
-	width, height int
+	OS                 string
+	Time               time.Time
+	User               string
+	panels             []Panel
+	selectedPanelIndex int
+	debugMode          bool
+	width, height      int
 }
 
 func initialModel() model {
 	user, _ := user.Current()
 	width, height, _ := term.GetSize(int(os.Stdout.Fd()))
-	var panels []tea.Model
+	var panels []Panel
+	panels = append(
+		panels,
+		components.MakeCpuModel(width/2, height),
+		components.MakeMemoryModel(width/2, height),
+		components.MakeDiskModel(width/2, height),
+		components.MakeProcessesModel(width/2, height),
+	)
+	panels[0].ToggleActive()
+
 	return model{
 		OS:        runtime.GOOS,
 		Time:      time.Now(),
@@ -35,13 +49,7 @@ func initialModel() model {
 		debugMode: false,
 		width:     width,
 		height:    height,
-		panels: append(
-			panels,
-			components.MakeCpuModel(width/2, height),
-			components.MakeMemoryModel(width/2, height),
-			components.MakeDiskModel(width/2, height),
-			components.MakeProcessesModel(width/2, height),
-		),
+		panels:    panels,
 	}
 }
 
@@ -57,9 +65,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.debugMode = !m.debugMode
 			return m, nil
 		case "right":
-			m.selectedPanel = m.panels[2]
+			m.panels[m.selectedPanelIndex].ToggleActive()
+			if len(m.panels) == m.selectedPanelIndex+1 {
+				m.selectedPanelIndex = 0
+			} else {
+				m.selectedPanelIndex += 1
+			}
+			m.panels[m.selectedPanelIndex].ToggleActive()
+		case "left":
+			m.panels[m.selectedPanelIndex].ToggleActive()
+			if m.selectedPanelIndex == 0 {
+				m.selectedPanelIndex = len(m.panels) - 1
+			} else {
+				m.selectedPanelIndex -= 1
+			}
+			m.panels[m.selectedPanelIndex].ToggleActive()
 		case "del":
-			m.selectedPanel = nil
+			m.selectedPanelIndex = 0
 		}
 
 	case tea.WindowSizeMsg:
@@ -70,20 +92,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	for i, panel := range m.panels {
-		var cmd tea.Cmd
+	if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
+		for i, panel := range m.panels {
+			var cmd tea.Cmd
+			model, cmd := panel.Update(msg)
+			m.panels[i] = model.(Panel)
 
-		if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
-			// Not a key message, send to all panels
-			m.panels[i], cmd = panel.Update(msg)
-		} else if panel == m.selectedPanel {
-			// Is a key message, only send to selected panel
-			m.panels[i], cmd = panel.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
-
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+	} else {
+		// Only send the key messages to the active pane
+		_, cmd := m.panels[m.selectedPanelIndex].Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"goputer/internal/card"
 	"goputer/internal/styles"
-	"log"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -17,12 +16,15 @@ type MemoryModel struct {
 	memory Memory
 	width  int
 	height int
+	card   card.Card
 }
 
 func MakeMemoryModel(width, height int) *MemoryModel {
+	card := card.New("Memory Usage", "")
 	model := MemoryModel{
 		width:  width,
 		height: height,
+		card:   card,
 	}
 	return &model
 }
@@ -35,6 +37,7 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width / 2
 		m.height = msg.Height
+		m.card = m.card.SetWidth(m.width)
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -56,40 +59,42 @@ func (m *MemoryModel) View() string {
 
 	prog := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C"))
 
-	labelStyle := lipgloss.NewStyle().Width(labelWidth).AlignHorizontal(lipgloss.Left)
 	valueStyle := styles.ContentTextStyle.Width(valueWidth).AlignHorizontal(lipgloss.Right)
 
 	ramRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("RAM:"),
+		styles.LabelStyle.Render("RAM:"),
 		prog.ViewAs(m.memory.ram.UsedPercent/100))
 	totalRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Total:"),
+		styles.LabelStyle.Render("Total:"),
 		valueStyle.Render(fmt.Sprintf("%.1fGB", totalRamGb)))
 	usedRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Used:"),
+		styles.LabelStyle.Render("Used:"),
 		valueStyle.Render(fmt.Sprintf("%.1fGB", usedRamGb)))
 	freeRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Free:"),
+		styles.LabelStyle.Render("Free:"),
 		valueStyle.Render(fmt.Sprintf("%.1fGB", freeRamGb)))
 	cachedRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Cached:"),
+		styles.LabelStyle.Render("Cached:"),
 		valueStyle.Render(fmt.Sprintf("%.1fGB\n", cachedRamGb)))
 	swapRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Swap:"),
+		styles.LabelStyle.Render("Swap:"),
 		prog.ViewAs(m.memory.swap.UsedPercent/100))
 	swapUsageRow := lipgloss.JoinHorizontal(lipgloss.Top,
-		labelStyle.Render("Swap Used:"),
+		styles.LabelStyle.Render("Swap Used:"),
 		valueStyle.Render(swapUsed))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, ramRow, totalRow, usedRow, freeRow, cachedRow, swapRow, swapUsageRow)
-	log.Println(m.width)
-	return card.New("Memory Usage", content).SetWidth(m.width).Render()
+	return m.card.SetContent(content).Render()
 }
 
 func (m *MemoryModel) Init() tea.Cmd {
 	return tea.Batch(
 		checkMemory(),
 	)
+}
+
+func (m *MemoryModel) ToggleActive() {
+	m.card = m.card.ToggleActive()
 }
 
 func bytesToGB(bytes uint64) float64 {

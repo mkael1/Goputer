@@ -3,7 +3,7 @@ package components
 import (
 	"fmt"
 	"goputer/internal/card"
-	"log"
+	"goputer/internal/styles"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -17,12 +17,15 @@ type CPUModel struct {
 	cpu    cpuData
 	width  int
 	height int
+	card   card.Card
 }
 
 func MakeCpuModel(width, height int) *CPUModel {
+	card := card.New("CPU Usage", "")
 	model := CPUModel{
 		width:  width,
 		height: height,
+		card:   card,
 	}
 	return &model
 }
@@ -35,6 +38,7 @@ func (m *CPUModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width / 2
 		m.height = msg.Height
+		m.card = m.card.SetWidth(m.width)
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -53,7 +57,7 @@ func (m *CPUModel) View() string {
 		percentage = (sum / float64(len(m.cpu.Usage))) / 100
 	}
 	overallBar := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C")).ViewAs(percentage)
-	overallRow := lipgloss.JoinHorizontal(lipgloss.Left, labelStyle.Render("Overall:"), overallBar)
+	overallRow := lipgloss.JoinHorizontal(lipgloss.Left, styles.LabelStyle.Render("Overall:"), overallBar)
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		fmt.Sprintf("CPU: %d cores (%d threads)", m.cpu.Cores, m.cpu.Threads),
 		overallRow,
@@ -66,20 +70,23 @@ func (m *CPUModel) View() string {
 			continue
 		}
 		bar := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C")).ViewAs(val / 100)
-		text := labelStyle.Render(fmt.Sprintf("Thread %d: ", index+1))
+		text := styles.LabelStyle.Render(fmt.Sprintf("Thread %d: ", index+1))
 		row := lipgloss.JoinHorizontal(lipgloss.Left, text, bar)
 		content = lipgloss.JoinVertical(lipgloss.Left, content, row)
 	}
 
 	content = lipgloss.JoinVertical(lipgloss.Left, content, "", getUptimeString(m.cpu.Uptime))
-	log.Println(m.width)
-	return card.New("CPU Usage", content).SetWidth(m.width).Render()
+	return m.card.SetContent(content).Render()
 }
 
 func (m *CPUModel) Init() tea.Cmd {
 	return tea.Batch(
 		checkCpu(),
 	)
+}
+
+func (m *CPUModel) ToggleActive() {
+	m.card = m.card.ToggleActive()
 }
 
 func getUptimeString(uptime uint64) string {
@@ -90,12 +97,10 @@ func getUptimeString(uptime uint64) string {
 
 	return lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		labelStyle.Render("Uptime:"),
+		styles.LabelStyle.Render("Uptime:"),
 		fmt.Sprintf("%dd %dh %dm %ds", days, hours, minutes, seconds),
 	)
 }
-
-var labelStyle = lipgloss.NewStyle().Width(10).Align(lipgloss.Left)
 
 type cpuData struct {
 	Info    cpu.InfoStat
