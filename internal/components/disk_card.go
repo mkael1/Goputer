@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"goputer/internal/card"
+	"goputer/internal/styles"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -15,12 +16,15 @@ type DiskModel struct {
 	disks  []disk.UsageStat
 	width  int
 	height int
+	card   card.Card
 }
 
 func MakeDiskModel(width, height int) *DiskModel {
+	card := card.New("Disk Usage", "")
 	model := DiskModel{
 		width:  width,
 		height: height,
+		card:   card,
 	}
 	return &model
 }
@@ -33,6 +37,7 @@ func (m *DiskModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width / 2
 		m.height = msg.Height
+		m.card = m.card.SetWidth(m.width)
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -45,8 +50,8 @@ func (m *DiskModel) View() string {
 		prog := progress.New(progress.WithScaledGradient("#FF7CCB", "#FDFF8C"), progress.WithWidth(20)).ViewAs(usageStat.UsedPercent / 100)
 		diskBlock := lipgloss.JoinVertical(
 			lipgloss.Left,
-			lipgloss.JoinHorizontal(lipgloss.Left, labelStyle.Render(usageStat.Path), prog),
-			labelStyle.Render("Size:")+fmt.Sprintf("%.1f GB / %.1f GB", bytesToGB(usageStat.Free), bytesToGB(usageStat.Total)),
+			lipgloss.JoinHorizontal(lipgloss.Left, styles.LabelStyle.Render(usageStat.Path), prog),
+			styles.LabelStyle.Render("Size:")+fmt.Sprintf("%.1f GB / %.1f GB", bytesToGB(usageStat.Free), bytesToGB(usageStat.Total)),
 		)
 
 		content = lipgloss.JoinVertical(
@@ -56,13 +61,17 @@ func (m *DiskModel) View() string {
 		)
 	}
 
-	return card.New("Disk Usage", content).SetWidth(m.width).Render()
+	return m.card.SetContent(content).Render()
 }
 
 func (m *DiskModel) Init() tea.Cmd {
 	return tea.Batch(
 		checkDisk(),
 	)
+}
+
+func (m *DiskModel) ToggleActive() {
+	m.card = m.card.ToggleActive()
 }
 
 func checkDisk() tea.Cmd {

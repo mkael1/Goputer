@@ -45,6 +45,7 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width / 2
 		m.height = msg.Height
 		targetWidth := m.width - m.card.CardStyle.GetHorizontalPadding() - m.card.CardStyle.GetHorizontalBorderSize()
+		m.card = m.card.SetWidth(m.width)
 		m.table.SetWidth(targetWidth)
 		m.table.SetColumns(getTableColumns(targetWidth))
 		return m, nil
@@ -69,13 +70,18 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *ProcessesModel) View() string {
-	return m.card.SetWidth(m.width).SetContent(m.table.View()).Render()
+	card := m.card.SetContent(m.table.View())
+	return card.Render()
 }
 
 func (m *ProcessesModel) Init() tea.Cmd {
 	return tea.Batch(
 		checkProcesses(),
 	)
+}
+
+func (m *ProcessesModel) ToggleActive() {
+	m.card = m.card.ToggleActive()
 }
 
 func getTableColumns(width int) []table.Column {

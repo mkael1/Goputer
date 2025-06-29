@@ -1,11 +1,14 @@
 package card
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/charmbracelet/lipgloss"
+)
 
 type Card struct {
 	header    string
 	content   string
 	CardStyle lipgloss.Style
+	active    bool
 }
 
 func New(header string, content string) Card {
@@ -26,11 +29,24 @@ func (c Card) SetContent(content string) Card {
 	return c
 }
 
-func (c Card) Render() string {
-	w := c.CardStyle.GetWidth() - c.CardStyle.GetHorizontalBorderSize() - c.CardStyle.GetHorizontalPadding()
-	header := headerStyle.Width(w).Render(c.header)
+func (c Card) ToggleActive() Card {
+	c.active = !c.active
 
-	return cardStyle.Render(header + "\n" + c.content)
+	return c
+}
+
+func (c Card) Render() string {
+
+	if c.active {
+		c.CardStyle = c.CardStyle.BorderForeground(lipgloss.Color("10"))
+	}
+	w := c.CardStyle.GetWidth() - c.CardStyle.GetHorizontalBorderSize() // This is the actual width of the card
+
+	// We remove the padding, because we have to take it into account
+	// to calculate the actual length of the header content.
+	header := headerStyle.Width(w - c.CardStyle.GetHorizontalPadding()).Render(c.header)
+
+	return c.CardStyle.Width(w).Render(header + "\n" + c.content)
 }
 
 var (
