@@ -5,17 +5,19 @@ import (
 )
 
 type Card struct {
-	header    string
-	content   string
-	CardStyle lipgloss.Style
-	active    bool
+	header     string
+	content    string
+	CardStyle  lipgloss.Style
+	active     bool
+	showHeader bool
 }
 
 func New(header string, content string) Card {
 	return Card{
-		header:    header,
-		content:   content,
-		CardStyle: cardStyle,
+		header:     header,
+		content:    content,
+		CardStyle:  cardStyle,
+		showHeader: true,
 	}
 }
 
@@ -35,6 +37,12 @@ func (c Card) ToggleActive() Card {
 	return c
 }
 
+func (c Card) ShowHeader(b bool) Card {
+	c.showHeader = b
+
+	return c
+}
+
 func (c Card) Render() string {
 
 	if c.active {
@@ -44,9 +52,12 @@ func (c Card) Render() string {
 
 	// We remove the padding, because we have to take it into account
 	// to calculate the actual length of the header content.
-	header := headerStyle.Width(w - c.CardStyle.GetHorizontalPadding()).Render(c.header)
+	if c.showHeader {
+		header := headerStyle.Width(w-c.CardStyle.GetHorizontalPadding()).Render(c.header) + "\n"
+		c.content = header + c.content
+	}
 
-	return c.CardStyle.Width(w).Render(header + "\n" + c.content)
+	return c.CardStyle.Width(w).Render(c.content)
 }
 
 var (
