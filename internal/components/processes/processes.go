@@ -1,7 +1,7 @@
-package components
+package processes
 
 import (
-	"goputer/internal/card"
+	"goputer/internal/components"
 	"sort"
 	"strconv"
 	"time"
@@ -15,11 +15,11 @@ type ProcessesModel struct {
 	table  table.Model
 	width  int
 	height int
-	card   card.Card
+	card   components.Card
 }
 
 func MakeProcessesModel(width, height int) *ProcessesModel {
-	card := card.New("Processes", "")
+	card := components.NewCard("Processes", "")
 	totalWidth := width - card.CardStyle.GetHorizontalBorderSize() - card.CardStyle.GetHorizontalPadding()
 
 	t := table.New(
