@@ -14,6 +14,11 @@ type PanelManager struct {
 	width, height      int
 }
 
+type Panel interface {
+	tea.Model
+	ToggleActive()
+}
+
 func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -22,7 +27,7 @@ func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Panes.Right):
 			p.panels[p.selectedPanelIndex].ToggleActive()
-			if len(p.panels) == p.selectedPanelIndex+1 {
+			if p.selectedPanelIndex == len(p.panels)-1 {
 				p.selectedPanelIndex = 0
 			} else {
 				p.selectedPanelIndex += 1
@@ -53,9 +58,9 @@ func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 		}
 	} else {
-		// // Only send the key messages to the active pane
-		// _, cmd := m.panels[m.selectedPanelIndex].Update(msg)
-		// cmds = append(cmds, cmd)
+		// Only send the key messages to the active pane
+		_, cmd := p.panels[p.selectedPanelIndex].Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	return p, tea.Batch(cmds...)
@@ -86,6 +91,15 @@ func (p *PanelManager) View() string {
 	return panelsView
 }
 
+func (p *PanelManager) AddPanel(panel Panel) {
+	p.panels = append(p.panels, panel)
+	// In the scenario where we're adding a pane that is equivalent to the current active pane index,
+	// We want to set it as active automatically.
+	if len(p.panels)-1 == p.selectedPanelIndex {
+		p.panels[p.selectedPanelIndex].ToggleActive()
+	}
+}
+
 func (p *PanelManager) Init() tea.Cmd {
 	var batch []tea.Cmd
 
@@ -104,8 +118,4 @@ func NewPanelManager(width, height int) *PanelManager {
 		height:             height,
 		selectedPanelIndex: 0,
 	}
-}
-
-func (p *PanelManager) AddPanel(panel Panel) {
-	p.panels = append(p.panels, panel)
 }

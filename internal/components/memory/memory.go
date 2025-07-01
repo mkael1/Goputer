@@ -1,8 +1,9 @@
-package components
+package memory
 
 import (
 	"fmt"
-	"goputer/internal/card"
+	"goputer/internal/components"
+	"goputer/internal/storage"
 	"goputer/internal/styles"
 	"time"
 
@@ -16,11 +17,11 @@ type MemoryModel struct {
 	memory Memory
 	width  int
 	height int
-	card   card.Card
+	card   components.Card
 }
 
 func MakeMemoryModel(width, height int) *MemoryModel {
-	card := card.New("Memory Usage", "")
+	card := components.NewCard("Memory Usage", "")
 	model := MemoryModel{
 		width:  width,
 		height: height,
@@ -45,13 +46,13 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MemoryModel) View() string {
-	totalRamGb := bytesToGB(m.memory.ram.Total)
-	usedRamGb := bytesToGB(m.memory.ram.Used)
-	freeRamGb := bytesToGB(m.memory.ram.Free)
-	cachedRamGb := bytesToGB(m.memory.ram.Cached)
+	totalRamGb := storage.BytesToGb(m.memory.ram.Total)
+	usedRamGb := storage.BytesToGb(m.memory.ram.Used)
+	freeRamGb := storage.BytesToGb(m.memory.ram.Free)
+	cachedRamGb := storage.BytesToGb(m.memory.ram.Cached)
 
-	swapUsedGb := bytesToGB(m.memory.swap.Used)
-	swapTotalGb := bytesToGB(m.memory.swap.Total)
+	swapUsedGb := storage.BytesToGb(m.memory.swap.Used)
+	swapTotalGb := storage.BytesToGb(m.memory.swap.Total)
 	swapUsed := fmt.Sprintf("%.1f GB / %.1f GB", swapUsedGb, swapTotalGb)
 
 	labelWidth := 12                       // adjust as needed
@@ -95,10 +96,6 @@ func (m *MemoryModel) Init() tea.Cmd {
 
 func (m *MemoryModel) ToggleActive() {
 	m.card = m.card.ToggleActive()
-}
-
-func bytesToGB(bytes uint64) float64 {
-	return float64(bytes) / (1024 * 1024 * 1024)
 }
 
 type Memory struct {

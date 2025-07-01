@@ -1,22 +1,25 @@
-package components
+package keybindings
 
 import (
 	"fmt"
-	"goputer/internal/card"
+	"goputer/internal/components"
 	"goputer/internal/keys"
+	"goputer/internal/styles"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type KeybindingsModel struct {
 	width  int
 	height int
-	card   card.Card
+	card   components.Card
 }
 
 func MakeKeybindingsModel(width, height int) *KeybindingsModel {
-	card := card.New("Keybindings", "").ShowHeader(false)
+	card := components.NewCard("Keybindings", "").ShowHeader(false)
+
 	model := KeybindingsModel{
 		width:  width,
 		height: height,
@@ -30,7 +33,6 @@ func (m *KeybindingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.card = m.card.SetWidth(m.width)
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -45,16 +47,29 @@ func (m *KeybindingsModel) View() string {
 	content := ""
 
 	for _, val := range bindings {
-		content += fmt.Sprintf("%s - %s\n", val.Help().Key, val.Help().Desc)
+		content += fmt.Sprintf("%s%s\n", styles.LabelStyle.Render(val.Help().Key), descStyle.Render(val.Help().Desc))
 	}
 
-	return m.card.SetContent(content).Render()
+	header := "? help"
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		headerStyle.Width(m.width).Render(header),
+		contentStyle.Render(content),
+	)
 }
 
 func (m *KeybindingsModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *KeybindingsModel) ToggleActive() {
-	m.card = m.card.ToggleActive()
-}
+var headerStyle = lipgloss.NewStyle().
+	Padding(0, 1).
+	Background(lipgloss.Color("249")).
+	Foreground(lipgloss.Color("235"))
+
+var contentStyle = lipgloss.NewStyle().
+	Padding(0, 1)
+
+var descStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("252"))

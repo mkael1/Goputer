@@ -1,8 +1,9 @@
-package components
+package disk
 
 import (
 	"fmt"
-	"goputer/internal/card"
+	"goputer/internal/components"
+	"goputer/internal/storage"
 	"goputer/internal/styles"
 	"time"
 
@@ -16,11 +17,11 @@ type DiskModel struct {
 	disks  []disk.UsageStat
 	width  int
 	height int
-	card   card.Card
+	card   components.Card
 }
 
 func MakeDiskModel(width, height int) *DiskModel {
-	card := card.New("Disk Usage", "")
+	card := components.NewCard("Disk Usage", "")
 	model := DiskModel{
 		width:  width,
 		height: height,
@@ -51,7 +52,7 @@ func (m *DiskModel) View() string {
 		diskBlock := lipgloss.JoinVertical(
 			lipgloss.Left,
 			lipgloss.JoinHorizontal(lipgloss.Left, styles.LabelStyle.Render(usageStat.Path), prog),
-			styles.LabelStyle.Render("Size:")+fmt.Sprintf("%.1f GB / %.1f GB", bytesToGB(usageStat.Free), bytesToGB(usageStat.Total)),
+			styles.LabelStyle.Render("Size:")+fmt.Sprintf("%.1f GB / %.1f GB", storage.BytesToGb(usageStat.Free), storage.BytesToGb(usageStat.Total)),
 		)
 
 		content = lipgloss.JoinVertical(

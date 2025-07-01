@@ -1,4 +1,4 @@
-package card
+package components
 
 import (
 	"github.com/charmbracelet/lipgloss"
@@ -12,7 +12,7 @@ type Card struct {
 	showHeader bool
 }
 
-func New(header string, content string) Card {
+func NewCard(header string, content string) Card {
 	return Card{
 		header:     header,
 		content:    content,

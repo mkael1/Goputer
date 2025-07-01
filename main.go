@@ -2,15 +2,22 @@ package main
 
 import (
 	"fmt"
-	"goputer/internal/components"
+	"goputer/internal/components/cpu"
+	"goputer/internal/components/disk"
+	"goputer/internal/components/keybindings"
+	"goputer/internal/components/memory"
+	"goputer/internal/components/processes"
 	"goputer/internal/keys"
 	"goputer/internal/panel"
 	"os"
 	"os/user"
 	"runtime"
+	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
 )
 
@@ -19,6 +26,7 @@ type model struct {
 	User          string
 	width, height int
 	panelManager  *panel.PanelManager
+	showHelp      bool
 }
 
 func initialModel() model {
@@ -27,11 +35,10 @@ func initialModel() model {
 	var panels []panel.Panel
 	panels = append(
 		panels,
-		components.MakeCpuModel(width/2, height),
-		components.MakeMemoryModel(width/2, height),
-		components.MakeDiskModel(width/2, height),
-		components.MakeProcessesModel(width/2, height),
-		components.MakeKeybindingsModel(width, height),
+		cpu.MakeCpuModel(width/2, height),
+		memory.MakeMemoryModel(width/2, height),
+		disk.MakeDiskModel(width/2, height),
+		processes.MakeProcessesModel(width/2, height),
 	)
 
 	model := model{
@@ -40,6 +47,7 @@ func initialModel() model {
 		width:        width,
 		height:       height,
 		panelManager: panel.NewPanelManager(width, height),
+		showHelp:     false,
 	}
 
 	for _, p := range panels {
@@ -56,8 +64,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.Global.Quit):
 			return m, tea.Quit
+		case key.Matches(msg, keys.Global.Help):
+			m.showHelp = !m.showHelp
 		default:
-			return m.panelManager.Update(msg)
+			_, cmd := m.panelManager.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 
 	case tea.WindowSizeMsg:
@@ -76,29 +87,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// rightSideHeader := strings.ToUpper(m.OS) + " | " + time.Now().Format(time.Kitchen)
+	var headerStyle = lipgloss.NewStyle().
+		Width(m.width)
 
-	// var headerStyle = lipgloss.NewStyle().
-	// 	BorderStyle(lipgloss.RoundedBorder()).
-	// 	BorderForeground(lipgloss.Color("#ffffff")).
-	// 	BorderBottom(true).
-	// 	Width(m.width).
-	// 	Height(1)
+	leftHeader := fmt.Sprintf("System Monitor Resources")
+	rightHeader := fmt.Sprintf("%s | %s | %s", m.User, strings.ToUpper(m.OS), time.Now().Format(time.Kitchen))
 
-	// headerString := fmt.Sprintf("System Monitor Resources - %s", m.User)
+	// Create the full header with left and right content
+	header := headerStyle.Render(lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		leftHeader,
+		strings.Repeat(" ", m.width-lipgloss.Width(leftHeader)-lipgloss.Width(rightHeader)-headerStyle.GetHorizontalPadding()),
+		rightHeader,
+	))
 
-	// // Create the full header with left and right content
-	// header := lipgloss.JoinHorizontal(
-	// 	lipgloss.Top,
-	// 	headerString,
-	// 	strings.Repeat(" ", m.width-lipgloss.Width(headerString)-lipgloss.Width(rightSideHeader)),
-	// 	rightSideHeader,
-	// )
+	var footer string
+	if !m.showHelp {
+		footer = lipgloss.NewStyle().BorderTop(true).BorderBottom(false).Render("? toggle help * q quit")
+	} else {
+		footer = keybindings.MakeKeybindingsModel(m.width, m.height).View()
+	}
 
-	// header = headerStyle.Render(header)
-	// footer := headerStyle.BorderTop(true).BorderBottom(false).Render("? toggle help * q quit")
-
-	return m.panelManager.View()
+	content := m.panelManager.View()
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		content,
+		footer,
+	)
 }
 
 func (m model) Init() tea.Cmd {

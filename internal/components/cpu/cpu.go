@@ -1,8 +1,8 @@
-package components
+package cpu
 
 import (
 	"fmt"
-	"goputer/internal/card"
+	"goputer/internal/components"
 	"goputer/internal/styles"
 	"time"
 
@@ -17,11 +17,11 @@ type CPUModel struct {
 	cpu    cpuData
 	width  int
 	height int
-	card   card.Card
+	card   components.Card
 }
 
 func MakeCpuModel(width, height int) *CPUModel {
-	card := card.New("CPU Usage", "")
+	card := components.NewCard("CPU Usage", "")
 	model := CPUModel{
 		width:  width,
 		height: height,
