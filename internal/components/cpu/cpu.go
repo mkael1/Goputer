@@ -36,7 +36,7 @@ func (m *CPUModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cpu = cpuData(msg)
 		return m, checkCpu()
 	case tea.WindowSizeMsg:
-		m.width = msg.Width / 2
+		m.width = msg.Width
 		m.height = msg.Height
 		m.card = m.card.SetWidth(m.width)
 		return m, nil

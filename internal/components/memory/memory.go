@@ -36,7 +36,7 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.memory = Memory(msg)
 		return m, checkMemory()
 	case tea.WindowSizeMsg:
-		m.width = msg.Width / 2
+		m.width = msg.Width
 		m.height = msg.Height
 		m.card = m.card.SetWidth(m.width)
 		return m, nil

@@ -41,17 +41,21 @@ func initialModel() model {
 		processes.MakeProcessesModel(width/2, height),
 	)
 
+	var cells []panel.Cell
+	for _, p := range panels {
+		cells = append(cells, panel.Cell{
+			Panel:   p,
+			ColSpan: 6,
+		})
+	}
+
 	model := model{
 		OS:           runtime.GOOS,
 		User:         user.Username,
 		width:        width,
 		height:       height,
-		panelManager: panel.NewPanelManager(width, height),
+		panelManager: panel.NewPanelManager(width, height, panel.WithCols(12), panel.WithCells(cells)),
 		showHelp:     false,
-	}
-
-	for _, p := range panels {
-		model.panelManager.AddPanel(p)
 	}
 
 	return model
