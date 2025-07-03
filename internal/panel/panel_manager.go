@@ -18,7 +18,6 @@ const (
 type PanelManager struct {
 	Grid
 	selectedPanelIndex int
-	width, height      int
 	Type               DisplayType
 }
 
@@ -51,9 +50,7 @@ func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.Cells[p.selectedPanelIndex].ToggleActive()
 		}
 	case tea.WindowSizeMsg:
-		p.width = msg.Width
-		p.height = msg.Height
-		p.calulateCellsWidth(msg)
+		p.calculateCells(msg)
 		return p, nil
 	}
 
@@ -71,42 +68,62 @@ func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return p, tea.Batch(cmds...)
 }
 
-func (p *PanelManager) calulateCellsWidth(msg tea.WindowSizeMsg) []tea.Cmd {
+func (p *PanelManager) calculateCells(msg tea.WindowSizeMsg) []tea.Cmd {
 	var cmds []tea.Cmd
+	originalMsg := msg
+	rows := p.calculateGridRows()
+	targetHeight := originalMsg.Height / len(rows)
+	log.Println(targetHeight)
 
-	widthPerCols := msg.Width / p.Cols
-	for _, c := range p.Cells {
-		msg.Width = widthPerCols * c.ColSpan
-		_, cmd := c.Update(msg)
-		cmds = append(cmds, cmd)
+	for range rows {
+		for _, c := range p.Cells {
+			msg.Width = originalMsg.Width / (p.Cols / c.ColSpan)
+			msg.Height = targetHeight
+			_, cmd := c.Update(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	return cmds
 }
 
 func (p *PanelManager) View() string {
-	var content string
+	var finalContent string
 
+	rows := p.calculateGridRows()
+	for _, row := range rows {
+		rowContent := ""
+		for _, cell := range row {
+			rowContent = lipgloss.JoinHorizontal(lipgloss.Top, rowContent, cell.View())
+		}
+		finalContent = lipgloss.JoinVertical(lipgloss.Left, finalContent, rowContent)
+	}
+
+	return finalContent
+}
+
+func (p *PanelManager) calculateGridRows() [][]Cell {
 	colsLeft := p.Cols
-	var rows []string
-	rows = append(rows, "")
+	var rows [][]Cell
 	rowIndex := 0
 	for _, c := range p.Cells {
 		colsLeft -= c.ColSpan
 		if colsLeft >= 0 {
-			rows[rowIndex] = lipgloss.JoinHorizontal(lipgloss.Top, rows[rowIndex], c.Panel.View())
+			for len(rows) <= rowIndex {
+				rows = append(rows, []Cell{})
+			}
+
+			rows[rowIndex] = append(rows[rowIndex], c)
 		} else {
-			log.Println(colsLeft)
 			colsLeft = p.Cols - c.ColSpan
-			rows = append(rows, c.Panel.View())
+			rowIndex++
+			for len(rows) <= rowIndex {
+				rows = append(rows, []Cell{})
+			}
+			rows[rowIndex] = append(rows[rowIndex], c)
 		}
 	}
-
-	for _, row := range rows {
-		content = lipgloss.JoinVertical(lipgloss.Left, content, row)
-	}
-
-	return content
+	return rows
 }
 
 func (p *PanelManager) Init() tea.Cmd {
@@ -123,10 +140,8 @@ func (p *PanelManager) Init() tea.Cmd {
 
 type PanelOption func(*PanelManager)
 
-func NewPanelManager(width, height int, opts ...PanelOption) *PanelManager {
+func NewPanelManager(opts ...PanelOption) *PanelManager {
 	p := &PanelManager{
-		width:              width,
-		height:             height,
 		selectedPanelIndex: 0,
 		Type:               DisplayGrid,
 		Grid: Grid{

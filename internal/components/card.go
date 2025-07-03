@@ -26,6 +26,11 @@ func (c Card) SetWidth(i int) Card {
 	return c
 }
 
+func (c Card) SetHeight(i int) Card {
+	c.CardStyle = c.CardStyle.Height(i)
+	return c
+}
+
 func (c Card) SetContent(content string) Card {
 	c.content = content
 	return c
@@ -49,6 +54,7 @@ func (c Card) Render() string {
 		c.CardStyle = c.CardStyle.BorderForeground(lipgloss.Color("10"))
 	}
 	w := c.CardStyle.GetWidth() - c.CardStyle.GetHorizontalBorderSize() // This is the actual width of the card
+	h := c.CardStyle.GetHeight() - c.CardStyle.GetVerticalBorderSize()  // This is the actual height of the card
 
 	// We remove the padding, because we have to take it into account
 	// to calculate the actual length of the header content.
@@ -57,7 +63,7 @@ func (c Card) Render() string {
 		c.content = header + c.content
 	}
 
-	return c.CardStyle.Width(w).Render(c.content)
+	return c.CardStyle.Width(w).Height(h).Render(c.content)
 }
 
 var (

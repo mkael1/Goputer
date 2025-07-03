@@ -45,7 +45,7 @@ func (m *ProcessesModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		targetWidth := m.width - m.card.CardStyle.GetHorizontalPadding() - m.card.CardStyle.GetHorizontalBorderSize()
-		m.card = m.card.SetWidth(m.width)
+		m.card = m.card.SetWidth(m.width).SetHeight(m.height)
 		m.table.SetWidth(targetWidth)
 		m.table.SetColumns(getTableColumns(targetWidth))
 		return m, nil

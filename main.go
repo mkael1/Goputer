@@ -54,7 +54,7 @@ func initialModel() model {
 		User:         user.Username,
 		width:        width,
 		height:       height,
-		panelManager: panel.NewPanelManager(width, height, panel.WithCols(12), panel.WithCells(cells)),
+		panelManager: panel.NewPanelManager(panel.WithCols(12), panel.WithCells(cells)),
 		showHelp:     false,
 	}
 
@@ -78,14 +78,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		_, cmd := m.panelManager.Update(msg)
+		pmMsg := msg
+		pmMsg.Height = pmMsg.Height - 10 // Get size of header and footer
+		_, cmd := m.panelManager.Update(pmMsg)
 		cmds = append(cmds, cmd)
 	}
 
-	if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
-		_, cmd := m.panelManager.Update(msg)
-		cmds = append(cmds, cmd)
-	}
+	// if _, isKeyMsg := msg.(tea.KeyMsg); !isKeyMsg {
+	// 	_, cmd := m.panelManager.Update(msg)
+	// 	cmds = append(cmds, cmd)
+	// }
 
 	return m, tea.Batch(cmds...)
 }

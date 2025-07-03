@@ -5,6 +5,7 @@ import (
 	"goputer/internal/components"
 	"goputer/internal/storage"
 	"goputer/internal/styles"
+	"log"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -38,7 +39,8 @@ func (m *MemoryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.card = m.card.SetWidth(m.width)
+		log.Printf("memory height %d", m.height)
+		m.card = m.card.SetWidth(m.width).SetHeight(m.height)
 		return m, nil
 	}
 	var cmd tea.Cmd
