@@ -70,8 +70,7 @@ var (
 	cardStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
 			BorderForeground(lipgloss.Color("63")).
-			Padding(1).
-			MarginTop(1)
+			Padding(1)
 	headerStyle = lipgloss.NewStyle().
 			BorderBottom(true).
 			BorderStyle(lipgloss.NormalBorder()).

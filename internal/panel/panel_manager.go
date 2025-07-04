@@ -2,7 +2,6 @@ package panel
 
 import (
 	"goputer/internal/keys"
-	"log"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -73,7 +72,6 @@ func (p *PanelManager) calculateCells(msg tea.WindowSizeMsg) []tea.Cmd {
 	originalMsg := msg
 	rows := p.calculateGridRows()
 	targetHeight := originalMsg.Height / len(rows)
-	log.Println(targetHeight)
 
 	for range rows {
 		for _, c := range p.Cells {
@@ -91,12 +89,16 @@ func (p *PanelManager) View() string {
 	var finalContent string
 
 	rows := p.calculateGridRows()
-	for _, row := range rows {
+	for i, row := range rows {
 		rowContent := ""
 		for _, cell := range row {
 			rowContent = lipgloss.JoinHorizontal(lipgloss.Top, rowContent, cell.View())
 		}
-		finalContent = lipgloss.JoinVertical(lipgloss.Left, finalContent, rowContent)
+		if i > 0 {
+			finalContent = lipgloss.JoinVertical(lipgloss.Left, finalContent, rowContent)
+		} else {
+			finalContent = rowContent
+		}
 	}
 
 	return finalContent
@@ -167,6 +169,7 @@ func WithCols(count int) PanelOption {
 func WithCells(cc []Cell) PanelOption {
 	return func(pm *PanelManager) {
 		pm.Cells = cc
+		pm.Cells[pm.selectedPanelIndex].ToggleActive()
 	}
 }
 

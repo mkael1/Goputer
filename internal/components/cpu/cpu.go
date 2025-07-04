@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"goputer/internal/components"
 	"goputer/internal/styles"
-	"log"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -39,7 +38,6 @@ func (m *CPUModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		log.Printf("memory height %d", m.height)
 		m.card = m.card.SetWidth(m.width).SetHeight(m.height)
 		return m, nil
 	}
@@ -78,7 +76,7 @@ func (m *CPUModel) View() string {
 	}
 
 	content = lipgloss.JoinVertical(lipgloss.Left, content, "", getUptimeString(m.cpu.Uptime))
-	return m.card.SetContent("").Render()
+	return m.card.SetContent(content).Render()
 }
 
 func (m *CPUModel) Init() tea.Cmd {
