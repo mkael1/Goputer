@@ -2,6 +2,7 @@ package panel
 
 import (
 	"goputer/internal/keys"
+	"log"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,6 +19,8 @@ type PanelManager struct {
 	Grid
 	selectedPanelIndex int
 	Type               DisplayType
+	Width              int
+	Height             int
 }
 
 type Panel interface {
@@ -49,6 +52,8 @@ func (p *PanelManager) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.Cells[p.selectedPanelIndex].ToggleActive()
 		}
 	case tea.WindowSizeMsg:
+		p.Width = msg.Width
+		p.Height = msg.Height
 		p.calculateCells(msg)
 		return p, nil
 	}
@@ -71,12 +76,28 @@ func (p *PanelManager) calculateCells(msg tea.WindowSizeMsg) []tea.Cmd {
 	var cmds []tea.Cmd
 	originalMsg := msg
 	rows := p.calculateGridRows()
-	targetHeight := originalMsg.Height / len(rows)
 
-	for range rows {
-		for _, c := range p.Cells {
+	targetHeight := originalMsg.Height / len(rows)
+	leftoverHeightPx := targetHeight % len(rows)
+	log.Println(leftoverHeightPx)
+	for index, row := range rows {
+		msg.Height = targetHeight
+
+		// if leftoverHeightPx > 0 {
+		// 	msg.Height += 1
+		// 	leftoverHeightPx -= 1
+		// }
+
+		leftoverWidthPx := originalMsg.Width % len(rows[index])
+		for _, c := range row {
 			msg.Width = originalMsg.Width / (p.Cols / c.ColSpan)
-			msg.Height = targetHeight
+
+			// This it to accomodate leftover pixels if it's an odd width for the terminal
+			if leftoverWidthPx > 0 {
+				msg.Width += 1
+				leftoverWidthPx -= 1
+			}
+
 			_, cmd := c.Update(msg)
 			cmds = append(cmds, cmd)
 		}
@@ -89,6 +110,7 @@ func (p *PanelManager) View() string {
 	var finalContent string
 
 	rows := p.calculateGridRows()
+
 	for i, row := range rows {
 		rowContent := ""
 		for _, cell := range row {

@@ -44,7 +44,7 @@ func (m *Footer) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Footer) View() string {
 	var footer string
 	if !m.ShowHelp {
-		footer = lipgloss.NewStyle().BorderTop(true).BorderBottom(false).Render("? toggle help * q quit")
+		footer = lipgloss.NewStyle().BorderTop(true).BorderBottom(false).Render("? toggle help • q quit")
 	} else {
 		var bindings []key.Binding
 		bindings = append(bindings, keys.KeyMapToSlice(keys.Global)...)
@@ -63,7 +63,7 @@ func (m *Footer) View() string {
 			headerStyle.Width(m.width).Render(header),
 			contentStyle.Render(content),
 		)
-		footer = m.card.SetContent(content).Render()
+		footer = m.card.SetWidth(m.width).SetContent(content).Render()
 	}
 
 	return footer

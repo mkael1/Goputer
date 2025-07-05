@@ -76,7 +76,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.calculateWindowDimensions(msg)
+		m.calculateWindowDimensions(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 		return m, nil
 	default:
 		_, cmd := m.panelManager.Update(msg)
