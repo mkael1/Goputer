@@ -2,7 +2,6 @@ package panel
 
 import (
 	"goputer/internal/keys"
-	"log"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -77,16 +76,15 @@ func (p *PanelManager) calculateCells(msg tea.WindowSizeMsg) []tea.Cmd {
 	originalMsg := msg
 	rows := p.calculateGridRows()
 
-	targetHeight := originalMsg.Height / len(rows)
-	leftoverHeightPx := targetHeight % len(rows)
-	log.Println(leftoverHeightPx)
+	targetCellHeight := originalMsg.Height / len(rows)
+	leftoverHeightPx := originalMsg.Height % len(rows)
 	for index, row := range rows {
-		msg.Height = targetHeight
+		msg.Height = targetCellHeight
 
-		// if leftoverHeightPx > 0 {
-		// 	msg.Height += 1
-		// 	leftoverHeightPx -= 1
-		// }
+		if leftoverHeightPx > 0 {
+			msg.Height += 1
+			leftoverHeightPx -= 1
+		}
 
 		leftoverWidthPx := originalMsg.Width % len(rows[index])
 		for _, c := range row {
